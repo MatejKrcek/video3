@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Video Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    .wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    /* Zajistit viditelnost ovládacích prvků */
+    video::-webkit-media-controls {
+      display: flex !important;
+      opacity: 1 !important;
+    }
+    
+    /* Umožnit interakci s videem, ale zabránit interferenci se scrollováním parent stránky */
+    .video-controls-target {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 5;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <video autoplay muted playsinline controls loop id="mainVideo">
+      <source src="video2.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <div class="video-controls-target" id="controlsTarget"></div>
+  </div>
+  
+  <script>
+    // Inicializace video přehrávače
+    const video = document.getElementById('mainVideo');
+    const controlsTarget = document.getElementById('controlsTarget');
+    
+    // Umožnit kliknutí na video pro přehrání/zastavení
+    controlsTarget.addEventListener('click', function(e) {
+      if (video.paused) {
+        video.play();
+      } else {
+        video.pause();
+      }
+    });
+    
+    // Předat ovládací události na video
+    ['touchstart', 'touchmove', 'touchend'].forEach(eventName => {
+      controlsTarget.addEventListener(eventName, function(e) {
+        // Zkontrolovat, jestli jde o ovládací prvky videa
+        const target = e.target;
+        if (target.closest('video::-webkit-media-controls') || 
+            target.closest('.video-controls-target')) {
+          // Povolit interakci s ovládacími prvky
+          e.stopPropagation();
+        } else {
+          // Propagovat události pouze v případě, že se nejedná o ovládací prvky
+          if (window.parent && window.parent !== window) {
+            // Informovat rodičovské okno - komunikace mezi iframe a rodičem
+            window.parent.postMessage({
+              type: 'videoInteraction',
+              event: eventName
+            }, '*');
+          }
+        }
+      }, { passive: false });
+    });
+    
+    // Nastavit komunikaci s rodičovským oknem
+    window.addEventListener('message', function(event) {
+      // Zpracovat zprávy od rodiče, pokud potřeba
+      if (event.data && event.data.type === 'parentCommand') {
+        // Zde můžete implementovat příkazy od rodičovského okna
+      }
+    });
+
+    // Informovat rodiče, že iframe je připraven
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'videoFrameReady',
+        frameHeight: document.body.scrollHeight
+      }, '*');
+    }
+  </script>
+</body>
+</html>
